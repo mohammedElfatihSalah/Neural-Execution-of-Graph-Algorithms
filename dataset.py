@@ -1,11 +1,75 @@
 import networkx as nx 
 from bfs import BFS
+from bellman_ford import BellmanFord
 import numpy as np
 from torch_geometric.utils import from_networkx
 import torch 
 
-def get_trainloader(graph_type):
-  bfs = BFS()
+bfs = BFS()
+bellmanford = BellmanFord()
+
+
+def get_trainloader_bellmanford(graph_type):  
+  num_train = 100
+  num_nodes = 20
+  targets = []
+  graphs = []
+  predecessors = []
+  for i in range(num_train):
+    graph = GraphFactory.get_graph(num_nodes, graph_type)
+    n = len(graph.nodes)
+    root = np.random.randint(0, n)
+    states, p, l = bellmanford.run(graph,root)
+    graph = from_networkx(graph)
+    graph.x = torch.tensor(states[0])
+    
+    graphs.append(graph)
+    targets.append(torch.tensor(states[1:]).float())
+    predecessors.append(torch.tensor(p).int())
+  return graphs, targets, predecessors
+
+def get_valloader_bellmanford(graph_type):  
+  num_val = 5
+  num_nodes = 20
+  targets = []
+  graphs = []
+  predecessors = []
+  for i in range(num_val):
+    graph = GraphFactory.get_graph(num_nodes, graph_type)
+    n = len(graph.nodes)
+    root = np.random.randint(0, n)
+    states, p, l = bellmanford.run(graph,root)
+    graph = from_networkx(graph)
+    graph.x = torch.tensor(states[0])
+    
+    graphs.append(graph)
+    targets.append(torch.tensor(states[1:]).float())
+    predecessors.append(torch.tensor(p).int())
+  return graphs, targets, predecessors
+
+def get_testloader_bellmanford(graph_type):  
+  num_test = 5
+  num_nodes = 100
+  targets = []
+  graphs = []
+  predecessors = []
+  for i in range(num_test):
+    graph = GraphFactory.get_graph(num_nodes, graph_type)
+    n = len(graph.nodes)
+    root = np.random.randint(0, n)
+    states, p, l = bellmanford.run(graph,root)
+    graph = from_networkx(graph)
+    graph.x = torch.tensor(states[0])
+    
+    graphs.append(graph)
+    targets.append(torch.tensor(states[1:]).float())
+    predecessors.append(torch.tensor(p).int())
+  return graphs, targets, predecessors
+
+
+
+# BFS
+def get_trainloader(graph_type):  
   num_train = 100
   num_nodes = 20
   targets = []
@@ -24,7 +88,6 @@ def get_trainloader(graph_type):
   return graphs, targets
 
 def get_valloader(graph_type):
-  bfs = BFS()
   num_val = 5
   num_nodes = 20
   targets = []
@@ -42,7 +105,6 @@ def get_valloader(graph_type):
   return graphs, targets
 
 def get_testloader(graph_type):
-  bfs = BFS()
   num_test = 5
   num_nodes = 100
   targets = []
@@ -154,7 +216,14 @@ class GraphFactory:
       edges = list(zip(g_nodes_to_connect, h_nodes_to_connect))
       graph.add_edges_from(edges)
     return graph
-    
+
+if __name__ == '__main__':
+  g,s,p = get_trainloader_bellmanford('erdos_renyi')
+  print(g[0].x)
+  print(s[0])
+  g,s,p = get_valloader_bellmanford('erdos_renyi')
+  g,s,p = get_testloader_bellmanford('erdos_renyi')
+  
       
 
   

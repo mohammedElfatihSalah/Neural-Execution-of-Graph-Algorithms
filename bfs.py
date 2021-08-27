@@ -72,8 +72,8 @@ class BFS:
         return x
 
 if __name__ == '__main__':
-  # seed=3
-  # seed_everything(seed)
+  seed=17
+  seed_everything(seed)
   graph = GraphFactory.get_graph(7, 'erdos_renyi')
   E = nx.to_numpy_matrix(graph)
   E=np.array(E)

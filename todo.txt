@@ -1,4 +1,4 @@
-- solve termination problem
+
 - improve test script to test on whole categories
 - make the model takes as input the edge weights also, how gat can consider edges
 - complete the bellmanford today at least

@@ -13,7 +13,8 @@ class Encoder(nn.Module):
     self.w = nn.Linear(input_dim + hidden_dim, hidden_dim)
     self.relu=nn.ReLU()
   def forward(self, x, h):
-    z = self.relu(self.w(torch.cat([x, h], dim=1)))# N, hidden_dim
+    z = self.w(torch.cat([x, h], dim=1))# N, hidden_dim
+    #z = self.relu(z)
     return z
 
 # ==================== Gat Processor ================ #
@@ -30,7 +31,7 @@ class GATP(nn.Module):
         [nn.BatchNorm1d(hidden_dim) for _ in range(n_layers-1)]
     )
 
-  def forward(self, z, edge_index):
+  def forward(self, z, edge_index, edge_weight):
     h = z
     for conv, bs in zip(self.convs[:-1], self.bs):
       h = self.relu(conv(h,edge_index))
@@ -45,8 +46,8 @@ class MPNNP(nn.Module):
     self.relu = nn.ReLU()
     self.convs = GatedGraphConv(out_channels=hidden_dim, aggr=aggr, num_layers=n_layers)
 
-  def forward(self, z, edge_index):
-    h = self.convs(z, edge_index)
+  def forward(self, z, edge_index, edge_weight):
+    h = self.convs(z, edge_index, edge_weight)
     return h
 
 # ====================Edge Conv ======================= #
@@ -79,7 +80,7 @@ class EdgeP(nn.Module):
     self.convs = nn.ModuleList(
       [ EdgeConv(hidden_dim,hidden_dim) for _ in range(n_layers)])
 
-  def forward(self, z, edge_index):
+  def forward(self, z, edge_index, edge_weight):
     h = z
     for conv in self.convs[:-1]:
       h = self.relu(conv(h,edge_index))
@@ -103,6 +104,21 @@ class Decoder(nn.Module):
     y = self.head(out)
     return self.sig(y)
 
+# ==================== BellmanDecoder ======================= #
+class BellmanDecoder(nn.Module):
+  def __init__(self, hidden_dim):
+    super(BellmanDecoder, self).__init__()
+    self.w = nn.Linear(2*hidden_dim, hidden_dim)
+    self.w1 = nn.Linear(hidden_dim, hidden_dim)
+    self.relu = nn.ReLU()
+    self.head = nn.Linear(hidden_dim, 1)
+  def forward(self, h, z):
+    out = self.w(torch.cat([h, z], dim=1)) # N, hidden_dim
+    #out = self.relu(out)
+    #out = self.relu(self.w1(out))
+    y = self.head(out)
+    return y
+
 # ================== Termination ====================== #
 class Termination(nn.Module):
   def __init__(self, hidden_dim):
@@ -111,16 +127,33 @@ class Termination(nn.Module):
     self.sig = torch.nn.Sigmoid()
   def forward(self, h):
     # inputs: N, input_dim ?? 
-    h_bar = torch.mean(h, dim=1)
+    #print(h.shape)
+    h_bar = torch.mean(h, dim=0)
+    #print(h_bar.shape)
     t = self.sig(self.w(h_bar)) # N, hidden_dim
     return t
 
+#=================== Scoring network ===================== #
+# class ScoringNetwork(nn.Module):
+#   def __init__(self, hidden_dim, edge_dim):
+#     self.w = nn.Linear(2*hidden_dim + edge_dim, hidden_dim)
+  
+#   def forward(self, h, edge_index, edge_weight):
+#     u, v = edge_index 
+#     h_u = h[u]
+#     h_v = h[v]
+#     h_u_v_e = torch.cat([h_u, h_v, e], dim=1)
+#     new_fts = self.w(h_u_v_e)
 
 class TemplateModel(nn.Module):
-  def __init__(self, processor_type, input_dim, hidden_dim, n_layers, aggr, device):
+  def __init__(self, processor_type, task, input_dim, hidden_dim, n_layers, aggr, device):
     super(TemplateModel, self).__init__()
     self.encoder = Encoder(input_dim, hidden_dim)
-    self.decoder = Decoder(hidden_dim)
+    if task == 'bellman':
+      self.decoder = BellmanDecoder(hidden_dim)
+    elif task =='bfs':
+      self.decoder = Decoder(hidden_dim)
+
     self.device = device
     self.hidden_dim = hidden_dim
 
@@ -133,16 +166,17 @@ class TemplateModel(nn.Module):
     
     self.termination = Termination(hidden_dim)
   
-  def forward(self, x, h, edge_index):
+  def forward(self, x, h, edge_index, edge_weight=None):
     z = self.encoder(x,h)
-    h = self.processor(z, edge_index)
+    h = self.processor(z, edge_index, edge_weight)
     out = self.decoder(h,z)
     t = self.termination(h)
     return out, t, h
 
-def get_model(processor_type, input_dim, hidden_dim, n_layers, aggr, device):
+def get_model(processor_type, task, input_dim, hidden_dim, n_layers, aggr, device):
   return TemplateModel(
     processor_type,
+    task,
     input_dim,
     hidden_dim,
     n_layers,

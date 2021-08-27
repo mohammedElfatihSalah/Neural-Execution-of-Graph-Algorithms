@@ -1,7 +1,8 @@
 args = {
   'PATH' : './checkpoints',
-  'graph_type' :'erdos_renyi',
-  'processor_type' : 'gat',
+  'graph_type' :'grid', # ladder, erdos_renyi, grid
+  'task': 'bellman' , # bfs, bellmanford
+  'processor_type' : 'mpnn', # edge, gat, mpnn
   'aggr':'max',
   'teacher_ratio':0.0,
   'n_epochs':500,
