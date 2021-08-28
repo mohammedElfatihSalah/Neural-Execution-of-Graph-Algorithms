@@ -1,4 +1,3 @@
-Link to presentation [presentation](https://www.canva.com/design/DAEoMzMJBVw/lckaFj0-mIw4SxB4ULsg6A/view?utm_content=DAEoMzMJBVw&utm_campaign=designshare&utm_medium=link&utm_source=sharebutton)
 # Graph-Execution-of-Graph-Algorithms
 It's unofficial implementation of the paper [Neural Exexcution of Graph Algorithms](https://arxiv.org/abs/)
 
